@@ -1,4 +1,4 @@
 {
   "model": "qwen2.5:0.5b",
-  "max_answer": 300
+  "max_answer": 600
 }
