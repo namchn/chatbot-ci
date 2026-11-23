@@ -1,44 +1,26 @@
-# main에 Commit이 들어오면: test가 통과해야 이미지를 만들어 GHCR에 올립니다
-name: chatbot-ci
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - run: pip install pytest
-      - run: pytest -v
-
-  build-and-push:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: type=sha
-      - uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+# Application chatbot을 파일로 적은 것 (인프라 애즈 코드). 42일차
+# bash argocd/make-app.sh stu01 auto가 만든 것과 같은 내용입니다
+# 고칠 곳은 repoURL 줄 하나: stu01을 내 GitHub 아이디 (소문자)로
+# chatbot-config에 argocd/chatbot-app.yaml로 올립니다 (Create new file)
+# ArgoCD는 맨 위 폴더 (path: .)만 읽으므로 이 파일을 Sync하지 않습니다
+# 서버 쪽이 사라졌을 때 이 파일 하나를 kubectl apply하면 돌아옵니다
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chatbot
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/namchn/chatbot-config
+    targetRevision: HEAD
+    path: .
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chatbot
+  syncPolicy:
+    automated:
+      enabled: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
